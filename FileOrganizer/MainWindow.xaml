@@ -7,6 +7,23 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <TextBox x:Name="TextFileNames" Text="Some text"> </TextBox>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBox Grid.Column="0" x:Name="TextFileNames" Text="Some text"> </TextBox>
+        <ListBox Margin="5" Grid.Column="1" x:Name ="FileBox" 
+         Height="200"
+         ItemsSource="{Binding FileList}" 
+         AllowDrop="True" 
+         Drop="dropfiles">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox BorderThickness="0" Text="{Binding fileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 </Window>
