@@ -5,8 +5,42 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FileOrganizer"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <TextBox x:Name="TextFileNames" Text="Some text"> </TextBox>
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        Title="FileAway" Height="450" Width="800">
+    <Grid Margin="2.5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="20" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <tb:TaskbarIcon
+          x:Name="TaskBar"
+          ToolTipText="FileAway" 
+          />
+        <TextBlock Text="Drop Files" Grid.Column="0" Grid.Row="0" Padding="5, 0,0,0"></TextBlock>
+        <ListBox Margin="2.5" Grid.Column="0" Grid.Row="1" x:Name ="FileBox" 
+         AllowDrop="True" 
+         Drop="dropfiles">
+        </ListBox>
+
+        <TextBlock Text="Processed Files" Grid.Column="1" Grid.Row="0" Padding="5, 0,0,0"></TextBlock>
+        <ListBox Margin="2.5" Grid.Column="1" Grid.Row="1" x:Name ="ProcessedBox" 
+         ItemsSource="{Binding ProcessedList}" 
+        >
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock  Text="{Binding Time, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Separator BorderThickness="1" BorderBrush="Black" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="5"></Separator>
+                        <TextBlock  Text="{Binding Name, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Separator BorderThickness="1" BorderBrush="Black" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="5"></Separator>
+                        <TextBlock  Text="{Binding Preset, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </Grid>
 </Window>
