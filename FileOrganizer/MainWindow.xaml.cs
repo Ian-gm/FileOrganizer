@@ -20,6 +20,8 @@ using System.Windows.Media.TextFormatting;
 using System.Diagnostics;
 using System.ComponentModel;
 
+
+
 namespace FileOrganizer
 {
     /// <summary>
@@ -28,6 +30,8 @@ namespace FileOrganizer
     public partial class MainWindow : System.Windows.Window
     {
         //public ObservableCollection<string> FileList { get; set; }
+        public Dictionary<string, string> DirectoriesDictionary { get; set; }
+        public Dictionary<string, string> RenamingDictionary { get; set; }
 
         public List<string> FileList { get; set; }
 
@@ -53,6 +57,10 @@ namespace FileOrganizer
             RenamingDictionary = new Dictionary<string, string>();
             excelData = new DataTable();
             
+            DirectoriesDictionary = new Dictionary<string, string>();
+            RenamingDictionary = new Dictionary<string, string>();
+            excelData = new DataTable();
+
             InitializeComponent();
             this.DataContext = this;
 
@@ -167,6 +175,11 @@ namespace FileOrganizer
                 string[] gateFiles = Directory.GetFiles(gateDirectory);
                 AddItemstoFileList(gateFiles);
             }
+        }
+
+        private static void OnChanged(object sender, FileSystemEventArgs e)
+        {
+            Console.WriteLine(e.FullPath);
         }
 
         private static void OnChanged(object sender, FileSystemEventArgs e)
