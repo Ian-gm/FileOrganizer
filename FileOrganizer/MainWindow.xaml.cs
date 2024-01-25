@@ -19,6 +19,8 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Windows.Media.TextFormatting;
 using System.Diagnostics;
 using System.ComponentModel;
+using System.Windows.Forms;
+using FileAway.Properties;
 
 
 
@@ -38,14 +40,15 @@ namespace FileOrganizer
         public ObservableCollection<Processed> ProcessedList { get; set; }
         public DataTable excelData {  get; set; }
 
-        private Timer? timer1;
+        private System.Threading.Timer? timer1;
 
         private string gateDirectory;
 
-        private TaskbarIcon? tb;
+        private TaskbarIcon? tbi;
 
         public MainWindow()
         {
+            
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             //FileList = new ObservableCollection<string>();
             FileList = new List<string>();
@@ -61,34 +64,42 @@ namespace FileOrganizer
             InitializeComponent();
             this.DataContext = this;
 
-            timer1 = new Timer(Callback, null, 0, 10000);
+            //TASKBAR ICON
+            tbi = new TaskbarIcon();
+            tbi.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly().ManifestModule.Name);
+            tbi.ToolTipText = "FileAway";
+
+            timer1 = new System.Threading.Timer(Callback, null, 0, 10000);
 
             var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-
+            
             //READ ALL .TXT FILES
             string appPath = AppContext.BaseDirectory;
             string appPathPrevious = Directory.GetParent(appPath).Parent.FullName;
             string excelPath = Path.Combine(appPathPrevious, @"data.xlsx");
-            string icoPath = Path.Combine(appPath, @"icons\Logo.ico");
-
-            //tb = (TaskbarIcon)FindResource("MyNotifyIcon");
-            //tb.Icon = new System.Drawing.Icon(icoPath);
-            TaskBar.Icon = new System.Drawing.Icon(icoPath);
-
+            
             ReadDataExcel(excelPath);
 
-            gateDirectory = Path.Combine(appPathPrevious, @"Gate");
-            //gateDirectory = @"C:\Users\Ian\Desktop\Gate";
+            gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
+            
+            if(gateDirectory != null && Path.Exists(gateDirectory))
+            {
+                ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(gateDirectory);
+                StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory;
+            }
 
             string[] args = Environment.GetCommandLineArgs();
-
-            /*TaskbarIcon tbi = new TaskbarIcon();
-            tbi.Icon = Resources
-            tbi.ToolTipText = "hello world";
-            */
+            
             AddItemstoFileList(args);
 
             checkGateDirectory();
+
+            this.Closing += MainWindow_Closing;
+        }
+
+        private void MainWindow_Closing(object? sender, CancelEventArgs e)
+        {
+            tbi.Dispose();
         }
 
         public class Processed : INotifyPropertyChanged
@@ -162,12 +173,12 @@ namespace FileOrganizer
 
         private void Callback(object? state)
         {
-            checkGateDirectory();
+           checkGateDirectory();
         }
 
         private void checkGateDirectory()
         {
-            if (gateDirectory != null)
+            if (gateDirectory != null && Path.Exists(gateDirectory))
             {
                 string[] gateFiles = Directory.GetFiles(gateDirectory);
                 AddItemstoFileList(gateFiles);
@@ -197,10 +208,21 @@ namespace FileOrganizer
         {
             if (!Path.Exists(filePath))
             {
+                StatusMessage.Text = "data.xls file doesn't exist";
                 return;
             }
 
-            FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
+            FileStream stream;
+
+            try
+            {
+                stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
+            }
+            catch(Exception ex)
+            {
+                StatusMessage.Text = ex.Message;
+                return;
+            }
             IExcelDataReader excelReader;
 
             excelReader = ExcelDataReader.ExcelReaderFactory.CreateReader(stream);
@@ -216,17 +238,20 @@ namespace FileOrganizer
             var dataSet = excelReader.AsDataSet(conf);
 
             excelData = dataSet.Tables[0];
+
+            stream.Dispose();
         }
 
         private void AddItemstoFileList(string[] files)
         {
             foreach (string s in files)
             {
-                if (!Path.GetFileName(s).EndsWith(".dll"))
+                if (!Path.GetExtension(s).Contains(".dll"))
                 {
                     FileList.Add(s);
                 }
             }
+            
             OrganizeFiles();
         }
 
@@ -292,7 +317,14 @@ namespace FileOrganizer
 
                 string name = Path.GetFileNameWithoutExtension(file);
                 Processed mewItem = new Processed(name, rename);
-                Application.Current.Dispatcher.BeginInvoke(new Action(() => this.ProcessedList.Add(mewItem)));
+                try
+                {
+                    System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => this.ProcessedList.Add(mewItem)));
+                }
+                catch(System.Exception e)
+                {
+                    StatusMessage.Text = e.ToString();
+                }
             }
 
             ClearGateDirectory();
@@ -301,11 +333,38 @@ namespace FileOrganizer
 
         private void ClearGateDirectory()
         {
-            string[] gateFiles = Directory.GetFiles(gateDirectory);
-            foreach (string gateFile in gateFiles)
+            if(gateDirectory != null && Path.Exists(gateDirectory))
             {
-                File.Delete(gateFile);
+                string[] gateFiles = Directory.GetFiles(gateDirectory);
+                foreach (string gateFile in gateFiles)
+                {
+                    File.Delete(gateFile);
+                }
             }
+
+        }
+
+        private void GateFolder_Click(object sender, RoutedEventArgs e)
+        {
+            using (var fbd = new FolderBrowserDialog())
+            {
+                DialogResult result = fbd.ShowDialog();
+
+                string chosenFolder = fbd.SelectedPath;
+                
+                FileAway.Properties.Settings.Default.GateFolderPath = chosenFolder;
+                FileAway.Properties.Settings.Default.Save();
+
+                gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
+
+                ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(chosenFolder);
+                StatusMessage.Text = "Chosen Gate Folder: " + chosenFolder;
+            }
+        }
+
+        private void ClearProcessedList_Click(object sender, RoutedEventArgs e)
+        {
+            ProcessedList.Clear();
         }
     }
 }
