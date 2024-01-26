@@ -23,6 +23,9 @@ using System.Windows.Forms;
 using FileAway.Properties;
 using System.Globalization;
 using System;
+using static System.Windows.Forms.AxHost;
+using System.Xml.Linq;
+using System.Linq.Expressions;
 
 
 
@@ -33,12 +36,7 @@ namespace FileOrganizer
     /// </summary>
     public partial class MainWindow : System.Windows.Window
     {
-        //public ObservableCollection<string> FileList { get; set; }
-        public Dictionary<string, string> DirectoriesDictionary { get; set; }
-        public Dictionary<string, string> RenamingDictionary { get; set; }
-
         public List<string> FileList { get; set; }
-        public string TextLines { get; set; }
         public ObservableCollection<Processed> ProcessedList { get; set; }
         public DataTable excelData {  get; set; }
 
@@ -48,19 +46,13 @@ namespace FileOrganizer
 
         private TaskbarIcon? tbi;
 
+        private bool Running = false;
+
         public MainWindow()
         {
-            
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            //FileList = new ObservableCollection<string>();
             FileList = new List<string>();
             ProcessedList = new ObservableCollection<Processed>();
-            DirectoriesDictionary = new Dictionary<string, string>();
-            RenamingDictionary = new Dictionary<string, string>();
-            excelData = new DataTable();
-            
-            DirectoriesDictionary = new Dictionary<string, string>();
-            RenamingDictionary = new Dictionary<string, string>();
             excelData = new DataTable();
 
             InitializeComponent();
@@ -70,31 +62,34 @@ namespace FileOrganizer
             tbi = new TaskbarIcon();
             tbi.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly().ManifestModule.Name);
             tbi.ToolTipText = "FileAway";
-
-            timer1 = new System.Threading.Timer(Callback, null, 0, 10000);
-
-            var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
             
             //READ ALL .TXT FILES
             string appPath = AppContext.BaseDirectory;
             string appPathPrevious = Directory.GetParent(appPath).Parent.FullName;
             string excelPath = Path.Combine(appPathPrevious, @"data.xlsx");
             
-            ReadDataExcel(excelPath);
+            bool excelRead = ReadDataExcel(excelPath);
 
-            gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
-            
-            if(gateDirectory != null && Path.Exists(gateDirectory))
+            if(excelRead)
             {
-                ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(gateDirectory);
-                StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory;
+                timer1 = new System.Threading.Timer(Callback, null, 0, 10000);
+                var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+
+                gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
+
+                if (gateDirectory != null && Path.Exists(gateDirectory))
+                {
+                    ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(gateDirectory);
+                    StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory;
+                }
+
+                /*
+                string[] args = Environment.GetCommandLineArgs();
+                AddItemstoFileList(args);
+                */
+
+                checkGateDirectory();
             }
-
-            string[] args = Environment.GetCommandLineArgs();
-            
-            AddItemstoFileList(args);
-
-            checkGateDirectory();
 
             this.Closing += MainWindow_Closing;
         }
@@ -102,6 +97,11 @@ namespace FileOrganizer
         private void MainWindow_Closing(object? sender, CancelEventArgs e)
         {
             tbi.Dispose();
+        }
+
+        private static void OnChanged(object sender, FileSystemEventArgs e)
+        {
+            Console.WriteLine(e.FullPath);
         }
 
         public class Processed : INotifyPropertyChanged
@@ -173,45 +173,12 @@ namespace FileOrganizer
             }
         }
 
-        private void Callback(object? state)
-        {
-           checkGateDirectory();
-        }
-
-        private void checkGateDirectory()
-        {
-            if (gateDirectory != null && Path.Exists(gateDirectory))
-            {
-                string[] gateFiles = Directory.GetFiles(gateDirectory);
-                AddItemstoFileList(gateFiles);
-            }
-        }
-
-        private static void OnChanged(object sender, FileSystemEventArgs e)
-        {
-            Console.WriteLine(e.FullPath);
-        }
-
-        private void dropfiles(object sender, System.Windows.DragEventArgs e) //Esta es la función que recibe archivos por drag n drop
-        {
-            string[] droppedFiles = null;
-
-            if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
-            {
-                droppedFiles = e.Data.GetData(System.Windows.DataFormats.FileDrop, true) as string[];
-            }
-
-            if ((null == droppedFiles) || (!droppedFiles.Any())) { return; }
-
-            AddItemstoFileList(droppedFiles);
-        }
-
-        private void ReadDataExcel(string filePath)
+        private bool ReadDataExcel(string filePath)
         {
             if (!Path.Exists(filePath))
             {
-                StatusMessage.Text = "data.xls file doesn't exist";
-                return;
+                StatusMessage.Text = "data.xls file doesn't exist. Please add it";
+                return false;
             }
 
             FileStream stream;
@@ -220,10 +187,10 @@ namespace FileOrganizer
             {
                 stream = File.Open(filePath, FileMode.Open, FileAccess.Read);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 StatusMessage.Text = ex.Message;
-                return;
+                return false;
             }
             IExcelDataReader excelReader;
 
@@ -242,25 +209,69 @@ namespace FileOrganizer
             excelData = dataSet.Tables[0];
 
             stream.Dispose();
+
+
+            if (excelData != null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
+        private void Callback(object? state)
+        {
+            if (!Running)
+            {
+                Running = true;
+                checkGateDirectory();
+            }
+        }
+
+        private void dropfiles(object sender, System.Windows.DragEventArgs e) //Esta es la función que recibe archivos por drag n drop
+        {
+            string[] droppedFiles = null;
+
+            if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+            {
+                droppedFiles = e.Data.GetData(System.Windows.DataFormats.FileDrop, true) as string[];
+            }
+
+            if ((null == droppedFiles) || (!droppedFiles.Any())) { return; }
+
+            Running = true;
+
+            AddItemstoFileList(droppedFiles);
+        }
+
+        private void checkGateDirectory()
+        {
+            if (gateDirectory != null && Path.Exists(gateDirectory))
+            {
+                string[] gateFiles = Directory.GetFiles(gateDirectory);
+                if(gateFiles.Length > 0)
+                {
+                    AddItemstoFileList(gateFiles);
+                }
+            }
+        }
+        
         private void AddItemstoFileList(string[] files)
         {
             foreach (string s in files)
             {
-                if (!Path.GetExtension(s).Contains(".dll"))
-                {
-                    FileList.Add(s);
-                }
+                 FileList.Add(s);
             }
-            
             OrganizeFiles();
         }
-
+        
         private void OrganizeFiles()
         {
             foreach(string file in FileList)
             {
+                string newfile = "";
                 int rowIndex = 0;
                 string fileName = Path.GetFileNameWithoutExtension(file);
                 string fullName = Path.GetFileName(file);
@@ -272,16 +283,62 @@ namespace FileOrganizer
                 string chosenPiece = "";
                 string stringDate = "";
 
+                string? filePath = null;
+
                 if (fileName.Contains("_"))
                 {
                     fileNamePieces = fileName.Split('_');
                     int dateIndex = 0;
 
+                    //ALL DATE VARIATIONS
                     foreach (string fileNamePiece in fileNamePieces)
                     {
-                        //isDate = DateTime.TryParseExact(fileNamePiece, "MMddyyyy", enUS,
-                         //     DateTimeStyles.AdjustToUniversalout, fileDate);
-                        if ( isDate ) { break; }
+                        isDate = CustomParseDate("dddd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("d-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dddd-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dd-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("d-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dddd-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+
+                        isDate = CustomParseDate("dddd-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+
+                        isDate = CustomParseDate("dd-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("d-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dd-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("d-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+
+                        isDate = CustomParseDate("dddd-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dd-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("d-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dddd-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dd-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("d-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dddd-MM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-MM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("dddd-M-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("ddd-M-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+
+                        isDate = CustomParseDate("dd-MM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+
+                        isDate = CustomParseDate("MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("MMMM-yyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("MMM-yyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
+
+                        isDate = CustomParseDate("yyyyMMdd", fileNamePiece, out fileDate); if (isDate) { break; }
+                        isDate = CustomParseDate("yyMMdd", fileNamePiece, out fileDate); if (isDate) { break; }
+
                         dateIndex++;
                     }
 
@@ -298,7 +355,7 @@ namespace FileOrganizer
                     }
                     else
                     {
-                        chosenPiece = fileNamePieces[0];
+                        chosenPiece = fileNamePieces[1];
                     }
                 }
                 else
@@ -312,12 +369,12 @@ namespace FileOrganizer
                 {
                     stringDate = fileDate.ToShortDateString();
                     string[] datePieces = stringDate.Split('/');
-                    finalDate = datePieces[2].Substring(2) + datePieces[1] + datePieces[0];
+                    finalDate = datePieces[2].Substring(2) + "-" + datePieces[1] + "-" + datePieces[0];
                 }
                 else
                 {
                     string[] datePieces = DateTime.Today.ToShortDateString().Split('/');
-                    finalDate = datePieces[2].Substring(2) + datePieces[1] + datePieces[0];
+                    finalDate = datePieces[2].Substring(2) + "-" + datePieces[1] + "-" + datePieces[0];
                 }
                 
 
@@ -327,8 +384,6 @@ namespace FileOrganizer
 
                     if (chosenPiece.Equals(Keyword))
                     {
-                        string? filePath = null;
-
                         try
                         {
                             filePath = row["Directory"].ToString();
@@ -347,55 +402,208 @@ namespace FileOrganizer
                         
                         }
 
-                        string ext = Path.GetExtension(file);
-                        if(filePath != null && rename != null)
-                        {
-                            string newfile = Path.Combine(filePath, rename + ext);
-
-                            try
-                            {
-                                File.Copy(file, newfile);
-                            }
-                            catch(Exception e)
-                            { 
-                            
-                            }
-                        }
+                        break;
                     }
-
                     rowIndex++;
                 }
 
+                string ext = Path.GetExtension(file);
+                if (filePath != null && rename != null)
+                {
+                    newfile = Path.Combine(filePath, finalDate + "_" + rename + ext);
+                    newfile = addPrefix(newfile);
+                    string originalDirectory = Directory.GetParent(file).ToString();
+
+                    try
+                    {
+                        File.Copy(file, newfile);
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+
+                    if(originalDirectory == FileAway.Properties.Settings.Default.GateFolderPath)
+                    {
+                        File.Delete(file);
+                    }
+                }
+
+
                 string name = Path.GetFileNameWithoutExtension(file);
-                rename = finalDate + "_" + rename;
-                Processed mewItem = new Processed(name, rename);
-                try
+                if(newfile.Length == 0)
                 {
-                    System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => this.ProcessedList.Add(mewItem)));
+                    newfile = "NO MATCH";
                 }
-                catch(System.Exception e)
+                string newname = Path.GetFileNameWithoutExtension(newfile);
+                Processed mewItem = new Processed(name, newname);
+                bool alreadyAdded = false;
+
+                foreach (Processed item in ProcessedList)
                 {
-                    StatusMessage.Text = e.ToString();
+                    if (item.Name.Equals(name) && item.Preset.Equals(newname))
+                    {
+                        alreadyAdded = true;
+                    }
+                }
+
+                if (!alreadyAdded)
+                {
+                    try
+                    {
+                        System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(() => this.ProcessedList.Add(mewItem)));
+                    }
+                    catch (System.Exception e)
+                    {
+                        StatusMessage.Text = e.ToString();
+                    }
                 }
             }
 
-            ClearGateDirectory();
             FileList.Clear();
+            Running = false;
         }
 
-        private void ClearGateDirectory()
+        private string addPrefix(string filePath)
         {
-            if(gateDirectory != null && Path.Exists(gateDirectory))
+            string name = System.IO.Path.GetFileNameWithoutExtension(filePath);
+            string docpath = Directory.GetParent(filePath).FullName;
+            string ext = Path.GetExtension(filePath);
+
+            if(System.IO.Path.Exists(docpath))
             {
-                string[] gateFiles = Directory.GetFiles(gateDirectory);
-                foreach (string gateFile in gateFiles)
+                string[] getFiles = Directory.GetFiles(docpath);
+                int largestPrefix = 0;
+
+                foreach (string file in getFiles)
                 {
-                    File.Delete(gateFile);
+                    int filePrefix = 0;
+                    string checkName = name;
+                    string fileName = System.IO.Path.GetFileNameWithoutExtension(file);
+                    bool flag = fileName.Contains(checkName);
+
+                    if (flag)
+                    {
+                        filePrefix = 1;
+                        if (filePrefix > largestPrefix)
+                        {
+                            largestPrefix = filePrefix;
+                        }
+
+                        string[] fileNamePieces = fileName.Split('-');
+                        if (fileNamePieces.Length > 1)
+                        {
+                            string possiblePrefix = fileNamePieces[fileNamePieces.Length - 1];
+
+                            flag = int.TryParse(possiblePrefix, out filePrefix);
+                        }
+                        if (filePrefix >= largestPrefix)
+                        {
+                            largestPrefix = filePrefix + 1;
+                        }
+                    }
                 }
+                string prefix = "";
+
+                if (largestPrefix > 0)
+                {
+                    prefix = "-" + largestPrefix.ToString();
+                }
+
+                string filename = name + prefix + ext;
+                string finalPath = System.IO.Path.Combine(docpath, filename);
+
+                return finalPath;
+            }
+            else
+            {
+                return filePath;
+            }
+        }
+        
+        private bool CustomParseDate(string style, string datestring, out DateTime fileDate)
+        {
+            bool isDate;
+            fileDate = DateTime.Now;
+            string[] stylePiece = style.Split('-');
+
+            if(stylePiece.Length == 2)
+            {
+                //style = stylePiece[0] + stylePiece[1];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                
+                style = stylePiece[0] + " " + stylePiece[1];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[0] + "-" + stylePiece[1];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[0] + "." + stylePiece[1];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+
+                //style = stylePiece[1] + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[1] + " " + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[1] + "-" + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[1] + "." + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+            }
+            else if (stylePiece.Length == 3)
+            {
+                //style = stylePiece[0] + stylePiece[1] + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[0] + " " + stylePiece[1] + " " + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[0] + "-" + stylePiece[1] + "-" + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[0] + "." + stylePiece[1] + "." + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+
+                //style = stylePiece[1] + stylePiece[0] + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[1] + " " + stylePiece[0] + " " + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[1] + "-" + stylePiece[0] + "-" + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[1] + "." + stylePiece[0] + "." + stylePiece[2];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+
+                //style = stylePiece[2] + stylePiece[1] + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[2] + " " + stylePiece[1] + " " + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[2] + "-" + stylePiece[1] + "-" + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+
+                style = stylePiece[2] + "." + stylePiece[1] + "." + stylePiece[0];
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+            }
+            else
+            {
+                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
             }
 
-        }
 
+            return false;
+        }
+        
         private void GateFolder_Click(object sender, RoutedEventArgs e)
         {
             using (var fbd = new FolderBrowserDialog())
