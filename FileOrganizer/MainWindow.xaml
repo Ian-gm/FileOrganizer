@@ -12,7 +12,9 @@
             <Setter Property="Width" Value="150"></Setter>
             <Setter Property="Height" Value="25"></Setter>
         </Style>
+
     </Window.Resources>
+    
     <Grid Margin="5">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -26,7 +28,6 @@
             <RowDefinition Height="20" />
         </Grid.RowDefinitions>
 
-
         <TextBlock VerticalAlignment="Bottom" Text="Processed Files:" Grid.Column="0" Grid.Row="0" Padding="5, 0,0,0"></TextBlock>
         <ListView Margin="5" Grid.Column="0" Grid.Row="1" x:Name ="ProcessedBox"
          AllowDrop="True" 
@@ -37,10 +38,10 @@
                     <GridViewColumn Header="Time" Width="40" DisplayMemberBinding="{Binding Time}" />
                     <GridViewColumn Header="File Name" Width="200" DisplayMemberBinding="{Binding Name}" />
                     <GridViewColumn Header="Changed to" Width="200" DisplayMemberBinding="{Binding Preset}" />
-                    <GridViewColumn Header="Sent to" Width="90">
+                    <GridViewColumn Header="Sent to" Width="60" >
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Width="50" Margin="0" BorderThickness="0"></Button>
+                                <Button Background="White" Click="FolderButton_Click"  Width="45" Margin="0" BorderThickness="0">Folder</Button>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>

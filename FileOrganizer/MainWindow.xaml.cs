@@ -37,7 +37,9 @@ namespace FileOrganizer
     public partial class MainWindow : System.Windows.Window
     {
         public List<string> FileList { get; set; }
+
         public ObservableCollection<Processed> ProcessedList { get; set; }
+
         public DataTable excelData {  get; set; }
 
         private System.Threading.Timer? timer1;
@@ -58,11 +60,14 @@ namespace FileOrganizer
             InitializeComponent();
             this.DataContext = this;
 
+            
             //TASKBAR ICON
+            string fileExe = System.Reflection.Assembly.GetEntryAssembly().Location;
             tbi = new TaskbarIcon();
-            tbi.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly().ManifestModule.Name);
+            //tbi.Icon = System.Drawing.Icon.ExtractAssociatedIcon(fileExe);
             tbi.ToolTipText = "FileAway";
             
+
             //READ ALL .TXT FILES
             string appPath = AppContext.BaseDirectory;
             string appPathPrevious = Directory.GetParent(appPath).Parent.FullName;
@@ -72,8 +77,8 @@ namespace FileOrganizer
 
             if(excelRead)
             {
-                timer1 = new System.Threading.Timer(Callback, null, 0, 10000);
-                var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+                timer1 = new System.Threading.Timer(Callback, null, 0, 2000);
+                //var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
 
                 gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
 
@@ -88,7 +93,7 @@ namespace FileOrganizer
                 AddItemstoFileList(args);
                 */
 
-                checkGateDirectory();
+                //checkGateDirectory();
             }
 
             this.Closing += MainWindow_Closing;
@@ -109,6 +114,7 @@ namespace FileOrganizer
             private string time;
             private string name;
             private string preset;
+            private string folder;
             public string Time
             {
                 get { return this.time; }
@@ -149,7 +155,24 @@ namespace FileOrganizer
                     }
                 }
             }
-            public Processed(string fileName, string filePreset)
+            public string Folder
+            {
+                get { return this.folder; }
+                set
+                {
+                    if (this.folder != value)
+                    {
+                        this.folder = value;
+                        this.NotifyPropertyChanged("Folder");
+                    }
+                    else
+                    {
+                        this.folder = "NO FOLDER";
+                    }
+                }
+            }
+
+            public Processed(string fileName, string filePreset, string fileFolder)
             {
                 time = DateTime.Now.ToShortTimeString();
                 name = fileName;
@@ -161,7 +184,15 @@ namespace FileOrganizer
                 {
                     preset = "NO MATCH FOUND";
                 }
-                
+
+                if (fileFolder != null)
+                {
+                    folder = fileFolder;
+                }
+                else
+                {
+                    folder = "-";
+                }
             }
 
             public event PropertyChangedEventHandler PropertyChanged;
@@ -256,6 +287,8 @@ namespace FileOrganizer
                     AddItemstoFileList(gateFiles);
                 }
             }
+            
+            Running = false;
         }
         
         private void AddItemstoFileList(string[] files)
@@ -265,6 +298,8 @@ namespace FileOrganizer
                  FileList.Add(s);
             }
             OrganizeFiles();
+
+            Running = false;
         }
         
         private void OrganizeFiles()
@@ -410,6 +445,13 @@ namespace FileOrganizer
                 string ext = Path.GetExtension(file);
                 if (filePath != null && rename != null)
                 {
+                    if(!Path.Exists(filePath))
+                    {
+                        Directory.CreateDirectory(filePath);
+
+                        StatusMessage.Text = "Created folder: " + filePath;
+                    }
+                    
                     newfile = Path.Combine(filePath, finalDate + "_" + rename + ext);
                     newfile = addPrefix(newfile);
                     string originalDirectory = Directory.GetParent(file).ToString();
@@ -420,10 +462,10 @@ namespace FileOrganizer
                     }
                     catch (Exception e)
                     {
-
+                        StatusMessage.Text = "Couldn't send file to indicated folder. " + e.Message;
                     }
 
-                    if(originalDirectory == FileAway.Properties.Settings.Default.GateFolderPath)
+                    if(originalDirectory == FileAway.Properties.Settings.Default.GateFolderPath && Path.Exists(newfile))
                     {
                         File.Delete(file);
                     }
@@ -436,7 +478,7 @@ namespace FileOrganizer
                     newfile = "NO MATCH";
                 }
                 string newname = Path.GetFileNameWithoutExtension(newfile);
-                Processed mewItem = new Processed(name, newname);
+                Processed mewItem = new Processed(name, newname, filePath);
                 bool alreadyAdded = false;
 
                 foreach (Processed item in ProcessedList)
@@ -625,6 +667,26 @@ namespace FileOrganizer
         private void ClearProcessedList_Click(object sender, RoutedEventArgs e)
         {
             ProcessedList.Clear();
+        }
+
+        private void FolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            string folderPath = "";
+
+            var rowItem = (sender as System.Windows.Controls.Button).DataContext as Processed;
+
+            folderPath = rowItem.Folder;
+
+
+            if (Directory.Exists(folderPath))
+            {
+                Process.Start("explorer.exe", string.Format("/select, \"{0}\"", folderPath));
+                StatusMessage.Text = "Opened: " + folderPath;
+            }
+            else
+            {
+                StatusMessage.Text = "That folder doesn't exist";
+            }
         }
     }
 }
