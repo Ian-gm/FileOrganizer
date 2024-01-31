@@ -26,6 +26,7 @@ using System;
 using static System.Windows.Forms.AxHost;
 using System.Xml.Linq;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 
 
 
@@ -315,18 +316,22 @@ namespace FileOrganizer
                 string? rename = null;
                 bool isDate = false;
 
-                string chosenPiece = "";
+                string keywordPiece = "";
                 string stringDate = "";
 
                 string? filePath = null;
 
-                if (fileName.Contains("_"))
+                if (fileName.Contains("$"))
                 {
-                    fileNamePieces = fileName.Split('_');
+                    fileNamePieces = fileName.Split('$');
                     int dateIndex = 0;
 
+                    stringDate = fileNamePieces[0];
+                    keywordPiece = fileNamePieces[1];
+
                     //ALL DATE VARIATIONS
-                    foreach (string fileNamePiece in fileNamePieces)
+                    /*
+                    while (!isDate)
                     {
                         isDate = CustomParseDate("dddd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
                         isDate = CustomParseDate("ddd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
@@ -373,51 +378,38 @@ namespace FileOrganizer
 
                         isDate = CustomParseDate("yyyyMMdd", fileNamePiece, out fileDate); if (isDate) { break; }
                         isDate = CustomParseDate("yyMMdd", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        dateIndex++;
+                        break;
                     }
-
-                    if (isDate)
-                    {
-                        if (dateIndex == 0)
-                        {
-                            chosenPiece = fileNamePieces[1];
-                        }
-                        else
-                        {
-                            chosenPiece = fileNamePieces[0];
-                        }
-                    }
-                    else
-                    {
-                        chosenPiece = fileNamePieces[1];
-                    }
+                    */
+                    
                 }
                 else
                 {
-                    chosenPiece = fileName;
+                    stringDate = fileName;
                 }
 
 
                 string finalDate = "";
-                if (isDate)
-                {
-                    stringDate = fileDate.ToShortDateString();
-                    string[] datePieces = stringDate.Split('/');
-                    finalDate = datePieces[2].Substring(2) + "-" + datePieces[1] + "-" + datePieces[0];
-                }
-                else
-                {
-                    string[] datePieces = DateTime.Today.ToShortDateString().Split('/');
-                    finalDate = datePieces[2].Substring(2) + "-" + datePieces[1] + "-" + datePieces[0];
-                }
-                
+
+                bool dateFound = ComplexParseDate(stringDate, out finalDate);
+
+                keywordPiece = keywordPiece.ToLower();
 
                 foreach (DataRow row in excelData.Rows)
                 {
-                    string Keyword = row["Keyword"].ToString();
 
-                    if (chosenPiece.Equals(Keyword))
+                    string Keyword = "";
+
+                    try
+                    {
+                        Keyword = row["Keyword"].ToString().ToLower();
+                    }
+                    catch
+                    {
+                        StatusMessage.Text = "Missing Keyword column"; 
+                    }
+
+                    if (keywordPiece.Equals(Keyword))
                     {
                         try
                         {
@@ -563,6 +555,102 @@ namespace FileOrganizer
             }
         }
         
+        private bool ComplexParseDate(string input, out string dateString)
+        {
+            bool isDate;
+            bool dateFound = false;
+            DateTime fileDate = DateTime.Now;
+
+            int yearNumber = -1;
+            int monthNumber = -1;
+            int dayNumber = -1;
+
+            DateTime foundYear;
+            DateTime foundMonth = DateTime.Now;
+            DateTime foundDay;
+
+            bool isYear = false;
+            bool isMonth = false;
+            bool isDay = false;
+
+            //SEPARATE WORDS AND NUMBERS
+            var words = new List<string> { string.Empty };
+            for (var i = 0; i < input.Length; i++)
+            {
+                char newChar = input[i];
+                if(char.IsLetter(newChar) || char.IsNumber(newChar))
+                {
+                    words[words.Count - 1] += newChar;
+                }
+                if (i + 1 < input.Length && char.IsLetter(input[i]) != char.IsLetter(input[i + 1]))
+                {
+                    words.Add(string.Empty);
+                }
+            }
+            
+            foreach(string word in words)
+            {
+                int value = 0;
+
+
+                if (!int.TryParse(word, out value))
+                {
+                    isMonth = DateTime.TryParseExact(word, "MMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out foundMonth);
+                    isMonth = DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out foundMonth);
+                }
+                else
+                {
+                    if(word.Length == 1)
+                    {
+                        dayNumber = value;
+                    }
+                    else if(value > 31 || word.Length >= 3 || value == 0)
+                    {
+                        yearNumber = value;
+                    }
+                    else if(yearNumber != 0)
+                    {
+                        dayNumber = value;
+                    }
+                }
+
+                if (isMonth)
+                {
+                    monthNumber = foundMonth.Month;
+                }
+            }
+
+
+            //CHECK WHAT'S MISSING
+            if(yearNumber < 0 && monthNumber < 0 && dayNumber < 0)
+            {
+                dateFound = false;
+            }
+            else
+            {
+                dateFound = true;
+            }
+
+            if(yearNumber < 0)
+            {
+                yearNumber = DateTime.Now.Year;
+            }
+
+            if (monthNumber < 0)
+            {
+                monthNumber = DateTime.Now.Month;
+            }
+
+            if (dayNumber < 0)
+            {
+                dayNumber = DateTime.Now.Day;
+            }
+
+            dateString = $"{yearNumber:D2}" + "-" + $"{monthNumber:D2}" + "-" + $"{dayNumber:D2}";
+
+            return dateFound;
+        }
+
         private bool CustomParseDate(string style, string datestring, out DateTime fileDate)
         {
             bool isDate;
