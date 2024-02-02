@@ -29,13 +29,13 @@ using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using System.Diagnostics.Tracing;
 
-
-
 namespace FileOrganizer
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
+    /// 
+
     public partial class MainWindow : System.Windows.Window
     {
         public List<string> FileList { get; set; }
@@ -62,7 +62,6 @@ namespace FileOrganizer
             InitializeComponent();
             this.DataContext = this;
 
-            
             //TASKBAR ICON
             string fileExe = System.Reflection.Assembly.GetEntryAssembly().Location;
             tbi = new TaskbarIcon();
@@ -579,17 +578,20 @@ namespace FileOrganizer
             for (var i = 0; i < input.Length; i++)
             {
                 char newChar = input[i];
-                if(char.IsLetter(newChar) || char.IsNumber(newChar))
+                if(char.IsLetter(newChar) || char.IsNumber(newChar)) //SI ES NUMERO O LETRA AGREGAR A WORD
                 {
                     words[words.Count - 1] += newChar;
                 }
 
-                if(i + 1 < input.Length)
+                if(i + 1 < input.Length) //SI NO ESTAMOS AL BORDE DEL STRING
                 {
                     char nextChar = input[i+1];
                     bool newCharbool = false;
                     bool nextCharbool = false;
+                    bool prevCharbool = false;
 
+
+                    //CHECKEAR SI ESTE CHAR Y EL SIGUIENTE SON DE DISTINTO TIPO
                     if (char.IsLetter(newChar))
                     {
                         newCharbool = true;
@@ -606,18 +608,30 @@ namespace FileOrganizer
                         nextCharbool = char.IsLetter(nextChar) | char.IsDigit(nextChar);
                     }
 
+                    //SI LA WORD TIENE DATA Y LOS CHARS SON DISTINTOS ENTONCES PASAR A LA SIGUIENTE
                     if (words[words.Count - 1].Length != 0 && newCharbool ^ nextCharbool)
                     {
                         words.Add(string.Empty);
                     }
+
+                    //CHECKEAR SI EL CHAR PREVIO NO ERA UN SÍMBOLO Y SI LOS DOS SIGUIENTES SON SIMBOLOS
+                    if (i - 1 >= 0)
+                    {
+                        char prevChar = input[i - 1];
+                        prevCharbool = char.IsLetter(prevChar) | char.IsDigit(prevChar);
+
+                        if (prevCharbool && (!newCharbool && !nextCharbool))
+                        {
+                            words[words.Count - 1] += "x";
+                        }
+                    }
                 }
             }
 
-            //SUBLIST OF WORDS
+            //CREATE A NEW SUBLIST IF THERE'S NON-MONTH BETWEEN ITEMS OR MORE THAN 1 SYMBOL CHAR
             List<List<string>> subwords = new List<List<string>>();
             subwords.Add(new List<string>());
 
-            //CREATE A NEW SUBLIST IF THERE'S NON-MONTH BETWEEN ITEMS
             for (var i = 0; i < words.Count; i++)
             {
                 string word = words[i];
@@ -668,20 +682,83 @@ namespace FileOrganizer
                 }
             }
 
-
             //Clean the last subwords if it's empty
             if (subwords[subwords.Count - 1].Count == 0)
             {
                 subwords.RemoveAt(subwords.Count - 1);
             }
 
+            //LEGEND: {YEAR, MONTH, DAY}
+            List<int> dateData = new List<int> { -1, -1, -1};
 
-
-            foreach(List<string>swords in subwords)
+            foreach (List<string> swords in subwords)
             {
+                List<int> newdateData = getDate(swords);
 
+                bool hadYear = dateData[0] != -1;
+                bool hadMonth = dateData[1] != -1;
+                bool hadDay = dateData[2] != -1;
+
+                int hadSum = Convert.ToInt32(hadYear) + Convert.ToInt32(hadMonth) + Convert.ToInt32(hadDay);
+
+                bool hasYear = newdateData[0] != -1;
+                bool hasMonth = newdateData[1] != -1;
+                bool hasDay = newdateData[2] != -1;
+
+                int hasSum = Convert.ToInt32(hasYear) + Convert.ToInt32(hasMonth) + Convert.ToInt32(hasDay);
+
+                if (hasSum > hadSum)
+                {
+                    dateData = newdateData;
+                }
+                else if(hasSum == hadSum)
+                {
+                    if(!hadYear && hasYear)
+                    {
+                        dateData = newdateData;
+                    }
+                    else
+                    {
+                        if(dateData[0] < newdateData[0]) //LARGER YEAR
+                        {
+                            dateData = newdateData;
+                        }
+                        else if(dateData[0] == newdateData[0])
+                        {
+                            if (dateData[1] < newdateData[1]) //LARGER MONTH
+                            {
+                                dateData = newdateData;
+                            }
+                            else if (dateData[1] == newdateData[1]) //LARGER DAY
+                            {
+                                if (dateData[2] < newdateData[2])
+                                {
+                                    dateData = newdateData;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
+            if (dateData[0] == -1)
+            {
+                dateData[0] = DateTime.Now.Year;
+            }
+            if (dateData[1] == -1)
+            {
+                dateData[1] = DateTime.Now.Month;
+            }
+            if (dateData[2] == -1)
+            {
+                dateData[2] = DateTime.Now.Day;
+            }
+
+            dateString = $"{dateData[0]:D2}" + "-" + $"{dateData[1]:D2}" + "-" + $"{dateData[2]:D2}";
+
+            return true;
+
+            /*
             foreach (string word in words)
             {
                 int value = 0;
@@ -741,9 +818,187 @@ namespace FileOrganizer
 
             dateString = $"{yearNumber:D2}" + "-" + $"{monthNumber:D2}" + "-" + $"{dayNumber:D2}";
 
+
             return dateFound;
+            */
         }
 
+        private List<int> getDate(List<string> input)
+        {
+            List<int> finalDate = new List<int>{ -1, -1, -1};
+            List<int?> stringInfo = new List<int?>(input.Count);
+            for (int i = 0; i < input.Count; i++)
+            {
+                stringInfo.Add(null);
+            }
+            //LEGEND: 0 = year | 1 = month | 2 = day | 3 = longdate
+
+            bool isYear = false;
+            bool isMonth = false;
+            bool isLongDate = false;
+
+            DateTime getMonth = DateTime.Now;
+
+            for (int i = 0; i < input.Count; i++)
+            {
+                string word = input[i];
+                char firstchar = word[0];
+
+                if (char.IsLetter(firstchar))
+                {
+                    isMonth = DateTime.TryParseExact(word, "MMM", CultureInfo.CurrentCulture, DateTimeStyles.None, out getMonth);
+                    //isMonth = DateTime.TryParseExact(word, "MMM")
+                    if (!isMonth)
+                    {
+                        isMonth = DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out getMonth);
+                    }
+                }
+                else if (word.Length >= 6)
+                {
+                    DateTime longDate = DateTime.Now;
+
+                    int wordYear = -1;
+                    int wordMonth = -1;
+                    int wordsDay = -1;
+
+                    if (word.Length == 6)
+                    {
+                        wordYear = int.Parse(word.Substring(0, 2));
+                        wordMonth = int.Parse(word.Substring(2, 2));
+                        wordsDay = int.Parse(word.Substring(4, 2));
+
+                        //isLongDate = DateTime.TryParseExact(word, "yyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out longDate);
+                    }
+                    else if (word.Length == 8)
+                    {
+                        wordYear = int.Parse(word.Substring(0, 4));
+                        wordMonth = int.Parse(word.Substring(4, 2));
+                        wordsDay = int.Parse(word.Substring(6, 2));
+
+                        //isLongDate = DateTime.TryParseExact(word, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out longDate);
+                    }
+
+                    if (wordYear != -1 && wordMonth != -1 && wordsDay != -1)
+                    {
+                        if (wordMonth <= 12 && wordsDay <= 31)
+                        {
+                            isLongDate = true;
+
+                            finalDate[0] = wordYear;
+                            finalDate[1] = wordMonth;
+                            finalDate[2] = wordsDay;
+                        }
+                    }
+
+                    /*
+                    if (isLongDate)
+                    {
+                        stringInfo[i] = 3;
+                        finalDate[0] = longDate.Year;
+                        finalDate[1] = longDate.Month;
+                        finalDate[2] = longDate.Day;
+                    }
+                    */
+                }
+                else if (word.Length == 4)
+                {
+                    isYear = true;
+                    stringInfo[i] = 0;
+                    finalDate[0] = int.Parse(word);
+                }
+
+                if (isMonth)
+                {
+                    stringInfo[i] = 1;
+                    finalDate[1] = getMonth.Month;
+                }
+            }
+
+            for (int i = 0; i < input.Count; i++)
+            {
+                string word = input[i];
+                int? info = stringInfo[i];
+                int value = -1;
+
+                if(word.Length < 5 && !isLongDate)
+                {
+                    bool isNumber = int.TryParse(word, out value);
+
+                    if (isNumber)
+                    {
+                        if (value > 31)
+                        {
+                            stringInfo[i] = 0;
+                            if (finalDate[0] != -1)
+                            {
+                                isYear = true;
+                                finalDate[0] = value;
+                            }
+                        }
+                        else if (value > 12)
+                        {
+                            if (isYear)
+                            {
+                                stringInfo[i] = 2;
+                                finalDate[2] = value;
+                            }
+                        }
+                        else
+                        {
+                            if (isYear && isMonth)
+                            {
+                                stringInfo[i] = 2;
+                                finalDate[2] = value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < input.Count; i++)
+            {
+                string word = input[i];
+                int? info = stringInfo[i];
+                int value = -1;
+
+                if (word.Length < 5 && !isLongDate)
+                {
+                    bool isNumber = int.TryParse(word, out value);
+
+                    if (isNumber)
+                    {
+                        if (input.Count == 3)
+                        {
+                            if(!isYear && i == 0)
+                            {
+                                finalDate[0] = value;
+                            }
+                            if (!isMonth && i == 1)
+                            {
+                                finalDate[1] = value;
+                            }
+                            if (i == 2)
+                            {
+                                finalDate[2] = value;
+                            }
+                        }
+                        else if (input.Count == 2)
+                        {
+                            if (!isMonth && i == 0)
+                            {
+                                finalDate[1] = value;
+                            }
+                            if (i == 1)
+                            {
+                                finalDate[2] = value;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return finalDate;
+        }
         private bool CustomParseDate(string style, string datestring, out DateTime fileDate)
         {
             bool isDate;
