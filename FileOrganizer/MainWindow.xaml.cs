@@ -27,6 +27,7 @@ using static System.Windows.Forms.AxHost;
 using System.Xml.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using System.Diagnostics.Tracing;
 
 
 
@@ -582,26 +583,119 @@ namespace FileOrganizer
                 {
                     words[words.Count - 1] += newChar;
                 }
-                if (i + 1 < input.Length && char.IsLetter(input[i]) != char.IsLetter(input[i + 1]))
+
+                if(i + 1 < input.Length)
                 {
-                    words.Add(string.Empty);
+                    char nextChar = input[i+1];
+                    bool newCharbool = false;
+                    bool nextCharbool = false;
+
+                    if (char.IsLetter(newChar))
+                    {
+                        newCharbool = true;
+                        nextCharbool = char.IsLetter(nextChar);
+                    }
+                    else if (char.IsDigit(newChar))
+                    {
+                        newCharbool = true;
+                        nextCharbool = char.IsDigit(nextChar);
+                    }
+                    else
+                    {
+                        newCharbool = false;
+                        nextCharbool = char.IsLetter(nextChar) | char.IsDigit(nextChar);
+                    }
+
+                    if (words[words.Count - 1].Length != 0 && newCharbool ^ nextCharbool)
+                    {
+                        words.Add(string.Empty);
+                    }
                 }
             }
-            
-            foreach(string word in words)
+
+            //SUBLIST OF WORDS
+            List<List<string>> subwords = new List<List<string>>();
+            subwords.Add(new List<string>());
+
+            //CREATE A NEW SUBLIST IF THERE'S NON-MONTH BETWEEN ITEMS
+            for (var i = 0; i < words.Count; i++)
+            {
+                string word = words[i];
+                bool wordisnumber = true;
+                bool wordisMonth = false;
+
+                string nextWord = "";
+                bool nextWordisnumber = true;
+                bool nextWordisMonth = false;
+
+                if (i + 1 < words.Count)
+                {
+                    nextWord = words[i + 1];
+                }
+
+                wordisnumber = int.TryParse(word, out _);
+                if (!wordisnumber)
+                {
+                    wordisMonth = DateTime.TryParseExact(word, "MMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+                    wordisMonth = wordisMonth || DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+                    if (wordisMonth)
+                    {
+                        wordisnumber = true;
+                    }
+                }
+
+                nextWordisnumber = int.TryParse(nextWord, out _);
+                if (!nextWordisnumber)
+                {
+                    nextWordisMonth = DateTime.TryParseExact(nextWord, "MMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+                    nextWordisMonth = nextWordisMonth || DateTime.TryParseExact(nextWord, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+                    if (nextWordisMonth)
+                    {
+                        nextWordisnumber = true;
+                    }
+                }
+
+                //if this word is a number or month, add it
+                if (wordisnumber)
+                {
+                    subwords[subwords.Count - 1].Add(word);
+                }
+
+                //if next word isn't a number or month, make new sublist
+                if(wordisnumber & !nextWordisnumber)
+                {
+                    subwords.Add(new List<string>());
+                }
+            }
+
+
+            //Clean the last subwords if it's empty
+            if (subwords[subwords.Count - 1].Count == 0)
+            {
+                subwords.RemoveAt(subwords.Count - 1);
+            }
+
+
+
+            foreach(List<string>swords in subwords)
+            {
+
+            }
+
+            foreach (string word in words)
             {
                 int value = 0;
-
 
                 if (!int.TryParse(word, out value))
                 {
                     isMonth = DateTime.TryParseExact(word, "MMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out foundMonth);
+                    if (isMonth) { break; }
                     isMonth = DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out foundMonth);
                 }
                 else
                 {
                     if(word.Length == 1)
-                    {
+                    { 
                         dayNumber = value;
                     }
                     else if(value > 31 || word.Length >= 3 || value == 0)
@@ -619,7 +713,6 @@ namespace FileOrganizer
                     monthNumber = foundMonth.Month;
                 }
             }
-
 
             //CHECK WHAT'S MISSING
             if(yearNumber < 0 && monthNumber < 0 && dayNumber < 0)
