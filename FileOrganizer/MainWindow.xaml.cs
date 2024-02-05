@@ -327,65 +327,12 @@ namespace FileOrganizer
                     int dateIndex = 0;
 
                     stringDate = fileNamePieces[0];
-                    keywordPiece = fileNamePieces[1];
-
-                    //ALL DATE VARIATIONS
-                    /*
-                    while (!isDate)
-                    {
-                        isDate = CustomParseDate("dddd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dd-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("d-MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dddd-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dd-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("d-MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dddd-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        isDate = CustomParseDate("dddd-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        isDate = CustomParseDate("dd-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("d-MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dd-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("d-M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        isDate = CustomParseDate("dddd-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dd-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("d-MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dddd-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dd-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("d-MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dddd-MM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-MM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("dddd-M-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("ddd-M-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        isDate = CustomParseDate("dd-MM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        isDate = CustomParseDate("MMMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("MMMM-yyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("MMMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("MMM-yy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("MMM-yyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("MMM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("MM-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("M-yyyy", fileNamePiece, out fileDate); if (isDate) { break; }
-
-                        isDate = CustomParseDate("yyyyMMdd", fileNamePiece, out fileDate); if (isDate) { break; }
-                        isDate = CustomParseDate("yyMMdd", fileNamePiece, out fileDate); if (isDate) { break; }
-                        break;
-                    }
-                    */
-                    
+                    keywordPiece = fileNamePieces[1].Trim();               
                 }
                 else
                 {
                     stringDate = fileName;
+                    keywordPiece = fileName;
                 }
 
 
@@ -402,14 +349,14 @@ namespace FileOrganizer
 
                     try
                     {
-                        Keyword = row["Keyword"].ToString().ToLower();
+                        Keyword = row["Keyword"].ToString().ToLower().Trim();
                     }
                     catch
                     {
                         StatusMessage.Text = "Missing Keyword column"; 
                     }
 
-                    if (keywordPiece.Equals(Keyword))
+                    if (keywordPiece.Contains(Keyword))
                     {
                         try
                         {
@@ -554,7 +501,7 @@ namespace FileOrganizer
                 return filePath;
             }
         }
-        
+
         private bool ComplexParseDate(string input, out string dateString)
         {
             bool isDate;
@@ -578,14 +525,14 @@ namespace FileOrganizer
             for (var i = 0; i < input.Length; i++)
             {
                 char newChar = input[i];
-                if(char.IsLetter(newChar) || char.IsNumber(newChar)) //SI ES NUMERO O LETRA AGREGAR A WORD
+                if (char.IsLetter(newChar) || char.IsNumber(newChar)) //SI ES NUMERO O LETRA AGREGAR A WORD
                 {
                     words[words.Count - 1] += newChar;
                 }
 
-                if(i + 1 < input.Length) //SI NO ESTAMOS AL BORDE DEL STRING
+                if (i + 1 < input.Length) //SI NO ESTAMOS AL BORDE DEL STRING
                 {
-                    char nextChar = input[i+1];
+                    char nextChar = input[i + 1];
                     bool newCharbool = false;
                     bool nextCharbool = false;
                     bool prevCharbool = false;
@@ -676,7 +623,7 @@ namespace FileOrganizer
                 }
 
                 //if next word isn't a number or month, make new sublist
-                if(wordisnumber & !nextWordisnumber)
+                if (wordisnumber & !nextWordisnumber)
                 {
                     subwords.Add(new List<string>());
                 }
@@ -689,7 +636,7 @@ namespace FileOrganizer
             }
 
             //LEGEND: {YEAR, MONTH, DAY}
-            List<int> dateData = new List<int> { -1, -1, -1};
+            List<int> dateData = new List<int> { -1, -1, -1 };
 
             foreach (List<string> swords in subwords)
             {
@@ -711,27 +658,27 @@ namespace FileOrganizer
                 {
                     dateData = newdateData;
                 }
-                else if(hasSum == hadSum)
+                else if (hasSum == hadSum)
                 {
-                    if(!hadYear && hasYear)
+                    if (!hadYear && hasYear)
                     {
                         dateData = newdateData;
                     }
                     else
                     {
-                        if(dateData[0] < newdateData[0]) //LARGER YEAR
+                        if (dateData[0] < newdateData[0]) //LARGER YEAR
                         {
                             dateData = newdateData;
                         }
-                        else if(dateData[0] == newdateData[0])
+                        else if (dateData[0] == newdateData[0])
                         {
                             if (dateData[1] < newdateData[1]) //LARGER MONTH
                             {
                                 dateData = newdateData;
                             }
-                            else if (dateData[1] == newdateData[1]) //LARGER DAY
+                            else if (dateData[1] == newdateData[1])
                             {
-                                if (dateData[2] < newdateData[2])
+                                if (dateData[2] < newdateData[2]) //LARGER DAY
                                 {
                                     dateData = newdateData;
                                 }
@@ -754,83 +701,15 @@ namespace FileOrganizer
                 dateData[2] = DateTime.Now.Day;
             }
 
-            dateString = $"{dateData[0]:D2}" + "-" + $"{dateData[1]:D2}" + "-" + $"{dateData[2]:D2}";
+            dateString = $"{dateData[0]%100:D2}" + "-" + $"{dateData[1]:D2}" + "-" + $"{dateData[2]:D2}";
 
             return true;
-
-            /*
-            foreach (string word in words)
-            {
-                int value = 0;
-
-                if (!int.TryParse(word, out value))
-                {
-                    isMonth = DateTime.TryParseExact(word, "MMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out foundMonth);
-                    if (isMonth) { break; }
-                    isMonth = DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out foundMonth);
-                }
-                else
-                {
-                    if(word.Length == 1)
-                    { 
-                        dayNumber = value;
-                    }
-                    else if(value > 31 || word.Length >= 3 || value == 0)
-                    {
-                        yearNumber = value;
-                    }
-                    else if(yearNumber != 0)
-                    {
-                        dayNumber = value;
-                    }
-                }
-
-                if (isMonth)
-                {
-                    monthNumber = foundMonth.Month;
-                }
-            }
-
-            //CHECK WHAT'S MISSING
-            if(yearNumber < 0 && monthNumber < 0 && dayNumber < 0)
-            {
-                dateFound = false;
-            }
-            else
-            {
-                dateFound = true;
-            }
-
-            if(yearNumber < 0)
-            {
-                yearNumber = DateTime.Now.Year;
-            }
-
-            if (monthNumber < 0)
-            {
-                monthNumber = DateTime.Now.Month;
-            }
-
-            if (dayNumber < 0)
-            {
-                dayNumber = DateTime.Now.Day;
-            }
-
-            dateString = $"{yearNumber:D2}" + "-" + $"{monthNumber:D2}" + "-" + $"{dayNumber:D2}";
-
-
-            return dateFound;
-            */
         }
 
         private List<int> getDate(List<string> input)
         {
             List<int> finalDate = new List<int>{ -1, -1, -1};
-            List<int?> stringInfo = new List<int?>(input.Count);
-            for (int i = 0; i < input.Count; i++)
-            {
-                stringInfo.Add(null);
-            }
+
             //LEGEND: 0 = year | 1 = month | 2 = day | 3 = longdate
 
             bool isYear = false;
@@ -839,10 +718,13 @@ namespace FileOrganizer
 
             DateTime getMonth = DateTime.Now;
 
+            List<string> firstParse = new List<string>();
+
             for (int i = 0; i < input.Count; i++)
             {
                 string word = input[i];
                 char firstchar = word[0];
+                int value = -1;
 
                 if (char.IsLetter(firstchar))
                 {
@@ -852,6 +734,11 @@ namespace FileOrganizer
                     {
                         isMonth = DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out getMonth);
                     }
+
+                    if (isMonth)
+                    {
+                        finalDate[1] = getMonth.Month;
+                    }
                 }
                 else if (word.Length >= 6)
                 {
@@ -859,229 +746,324 @@ namespace FileOrganizer
 
                     int wordYear = -1;
                     int wordMonth = -1;
-                    int wordsDay = -1;
+                    int wordDay = -1;
 
                     if (word.Length == 6)
                     {
                         wordYear = int.Parse(word.Substring(0, 2));
                         wordMonth = int.Parse(word.Substring(2, 2));
-                        wordsDay = int.Parse(word.Substring(4, 2));
-
+                        wordDay = int.Parse(word.Substring(4, 2));
+                        if (wordMonth > 12 | wordDay > 31)
+                        {
+                            wordDay = int.Parse(word.Substring(0, 2));
+                            wordMonth = int.Parse(word.Substring(2, 2));
+                            wordYear = int.Parse(word.Substring(4, 2));
+                        }
                         //isLongDate = DateTime.TryParseExact(word, "yyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out longDate);
                     }
                     else if (word.Length == 8)
                     {
                         wordYear = int.Parse(word.Substring(0, 4));
                         wordMonth = int.Parse(word.Substring(4, 2));
-                        wordsDay = int.Parse(word.Substring(6, 2));
+                        wordDay = int.Parse(word.Substring(6, 2));
+                        if (wordMonth > 12 | wordDay > 31 | wordYear < 1900)
+                        {
+                            wordDay = int.Parse(word.Substring(0, 2));
+                            wordMonth = int.Parse(word.Substring(2, 2));
+                            wordYear = int.Parse(word.Substring(4, 4));
+                        }
 
-                        //isLongDate = DateTime.TryParseExact(word, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out longDate);
+                        if (wordMonth > 12 | wordDay > 31 | wordYear < 1900)
+                        {
+                            wordMonth = int.Parse(word.Substring(0, 2));
+                            wordDay = int.Parse(word.Substring(2, 2));
+                            wordYear = int.Parse(word.Substring(4, 4));
+                        }
                     }
 
-                    if (wordYear != -1 && wordMonth != -1 && wordsDay != -1)
+                    if (wordYear != -1 && wordMonth != -1 && wordDay != -1)
                     {
-                        if (wordMonth <= 12 && wordsDay <= 31)
+                        if (wordMonth <= 12 && wordDay <= 31)
                         {
                             isLongDate = true;
 
                             finalDate[0] = wordYear;
                             finalDate[1] = wordMonth;
-                            finalDate[2] = wordsDay;
+                            finalDate[2] = wordDay;
+
+                            //return finalDate;
                         }
                     }
 
-                    /*
-                    if (isLongDate)
-                    {
-                        stringInfo[i] = 3;
-                        finalDate[0] = longDate.Year;
-                        finalDate[1] = longDate.Month;
-                        finalDate[2] = longDate.Day;
-                    }
-                    */
                 }
                 else if (word.Length == 4)
                 {
                     isYear = true;
-                    stringInfo[i] = 0;
                     finalDate[0] = int.Parse(word);
                 }
-
-                if (isMonth)
+                else if(int.TryParse(word, out value))
                 {
-                    stringInfo[i] = 1;
-                    finalDate[1] = getMonth.Month;
-                }
-            }
-
-            for (int i = 0; i < input.Count; i++)
-            {
-                string word = input[i];
-                int? info = stringInfo[i];
-                int value = -1;
-
-                if(word.Length < 5 && !isLongDate)
-                {
-                    bool isNumber = int.TryParse(word, out value);
-
-                    if (isNumber)
+                    if (value > 31)
                     {
-                        if (value > 31)
+                        if (!isYear)
                         {
-                            stringInfo[i] = 0;
-                            if (finalDate[0] != -1)
-                            {
-                                isYear = true;
-                                finalDate[0] = value;
-                            }
-                        }
-                        else if (value > 12)
-                        {
-                            if (isYear)
-                            {
-                                stringInfo[i] = 2;
-                                finalDate[2] = value;
-                            }
+                            isYear = true;
+                            finalDate[0] = value;
                         }
                         else
                         {
-                            if (isYear && isMonth)
-                            {
-                                stringInfo[i] = 2;
-                                finalDate[2] = value;
-                            }
+                            firstParse.Add(word);
                         }
+                    }
+                    else if (value > 12)
+                    {
+                        if (isYear)
+                        {
+                            finalDate[2] = value;
+                        }
+                        else
+                        {
+                            firstParse.Add(word);
+                        }
+                    }
+                    else if (isYear && isMonth)
+                    {
+                        finalDate[2] = value;
+                    }
+                    else
+                    {
+                        firstParse.Add(word);
                     }
                 }
             }
 
+            for (int i = 0; i < firstParse.Count; i++)
+            {
+                string word = firstParse[i];
+                int value = int.Parse(word);
+
+                if (value > 31)
+                {
+                    if (!isYear)
+                    {
+                        isYear = true;
+                        finalDate[0] = value;
+                    }
+                }
+                else if (value > 12)
+                {
+                    if (isYear)
+                    {
+                        if (finalDate[2] == -1) { finalDate[2] = value; }
+                    }
+                }
+                else
+                {
+                    if (isYear && isMonth)
+                    {
+                        if (finalDate[2] == -1) { finalDate[2] = value; }
+                    }
+                    else if (isYear)
+                    {
+                        if (finalDate[1] == -1)
+                        { 
+                            isMonth = true;
+                            finalDate[1] = value;
+                        }
+                    }
+                }
+                
+            }
+
+            if (finalDate[0] != -1 && finalDate[1] != -1 && finalDate[2] != -1)
+            {
+                return finalDate;
+            }
+            
             for (int i = 0; i < input.Count; i++)
             {
                 string word = input[i];
-                int? info = stringInfo[i];
                 int value = -1;
 
-                if (word.Length < 5 && !isLongDate)
-                {
-                    bool isNumber = int.TryParse(word, out value);
+                bool isNumber = int.TryParse(word, out value);
 
-                    if (isNumber)
+                if (isNumber)
+                {
+                    if (input.Count == 3)
                     {
-                        if (input.Count == 3)
+                        if (!isYear && i == 0)
                         {
-                            if(!isYear && i == 0)
-                            {
-                                finalDate[0] = value;
-                            }
-                            if (!isMonth && i == 1)
-                            {
-                                finalDate[1] = value;
-                            }
-                            if (i == 2)
-                            {
-                                finalDate[2] = value;
-                            }
+                            if (finalDate[0] == -1) { finalDate[0] = value; }
                         }
-                        else if (input.Count == 2)
+                        if (!isMonth && i == 1)
                         {
-                            if (!isMonth && i == 0)
-                            {
-                                finalDate[1] = value;
-                            }
-                            if (i == 1)
-                            {
-                                finalDate[2] = value;
-                            }
+                            if (finalDate[1] == -1) { finalDate[1] = value; }
+                        }
+                        if (i == 2)
+                        {
+                            if (finalDate[2] == -1) { finalDate[2] = value; }
+                        }
+                    }
+                    else if (input.Count == 2)
+                    {
+                        if (!isMonth && i == 0)
+                        {
+                            if (finalDate[1] == -1) { finalDate[1] = value; }
+                        }
+                        else if (isMonth && i == 0)
+                        {
+                            if (finalDate[2] == -1) { finalDate[2] = value; }
+                        }
+                        else if (i == 1)
+                        {
+                            if (finalDate[2] == -1) { finalDate[2] = value; }
                         }
                     }
                 }
             }
+            
 
             return finalDate;
         }
-        private bool CustomParseDate(string style, string datestring, out DateTime fileDate)
+
+        private List<int> gDate(List<string> input)
         {
-            bool isDate;
-            fileDate = DateTime.Now;
-            string[] stylePiece = style.Split('-');
+            List<int> finalDate = new List<int> { -1, -1, -1 };
 
-            if(stylePiece.Length == 2)
+            //LEGEND: 0 = year | 1 = month | 2 = day | 3 = longdate
+
+            bool isYear = false;
+            bool isMonth = false;
+            bool isLongDate = false;
+
+            DateTime getMonth = DateTime.Now;
+
+            List<string> firstParse = new List<string>();
+
+            for (int i = 0; i < input.Count; i++)
             {
-                //style = stylePiece[0] + stylePiece[1];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-                
-                style = stylePiece[0] + " " + stylePiece[1];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                string word = input[0];
+                char firstchar = word[0];
+                int value = -1;
 
-                style = stylePiece[0] + "-" + stylePiece[1];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                if (char.IsLetter(firstchar))
+                {
+                    isMonth = DateTime.TryParseExact(word, "MMM", CultureInfo.CurrentCulture, DateTimeStyles.None, out getMonth);
+                    //isMonth = DateTime.TryParseExact(word, "MMM")
+                    if (!isMonth)
+                    {
+                        isMonth = DateTime.TryParseExact(word, "MMMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out getMonth);
+                    }
 
-                style = stylePiece[0] + "." + stylePiece[1];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                    if (isMonth)
+                    {
+                        finalDate[1] = getMonth.Month;
 
+                        //GET THE REST VALUES
+                        if(i == 0)
+                        {
+                            if(input.Count == 2)
+                            {
+                               
+                            }
+                        }
+                    }
+                }
+                else if (word.Length >= 6)
+                {
+                    DateTime longDate = DateTime.Now;
 
-                //style = stylePiece[1] + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                    int wordYear = -1;
+                    int wordMonth = -1;
+                    int wordDay = -1;
 
-                style = stylePiece[1] + " " + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                    if (word.Length == 6)
+                    {
+                        wordYear = int.Parse(word.Substring(0, 2));
+                        wordMonth = int.Parse(word.Substring(2, 2));
+                        wordDay = int.Parse(word.Substring(4, 2));
+                        if (wordMonth > 12 | wordDay > 31)
+                        {
+                            wordDay = int.Parse(word.Substring(0, 2));
+                            wordMonth = int.Parse(word.Substring(2, 2));
+                            wordYear = int.Parse(word.Substring(4, 2));
+                        }
+                        //isLongDate = DateTime.TryParseExact(word, "yyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out longDate);
+                    }
+                    else if (word.Length == 8)
+                    {
+                        wordYear = int.Parse(word.Substring(0, 4));
+                        wordMonth = int.Parse(word.Substring(4, 2));
+                        wordDay = int.Parse(word.Substring(6, 2));
+                        if (wordMonth > 12 | wordDay > 31 | wordYear < 1900)
+                        {
+                            wordDay = int.Parse(word.Substring(0, 2));
+                            wordMonth = int.Parse(word.Substring(2, 2));
+                            wordYear = int.Parse(word.Substring(4, 4));
+                        }
 
-                style = stylePiece[1] + "-" + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                        if (wordMonth > 12 | wordDay > 31 | wordYear < 1900)
+                        {
+                            wordMonth = int.Parse(word.Substring(0, 2));
+                            wordDay = int.Parse(word.Substring(2, 2));
+                            wordYear = int.Parse(word.Substring(4, 4));
+                        }
+                    }
 
-                style = stylePiece[1] + "." + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                    if (wordYear != -1 && wordMonth != -1 && wordDay != -1)
+                    {
+                        if (wordMonth <= 12 && wordDay <= 31)
+                        {
+                            isLongDate = true;
 
+                            finalDate[0] = wordYear;
+                            finalDate[1] = wordMonth;
+                            finalDate[2] = wordDay;
+
+                            return finalDate;
+                        }
+                    }
+
+                }
+                else if (word.Length == 4)
+                {
+                    isYear = true;
+                    finalDate[0] = int.Parse(word);
+                }
             }
-            else if (stylePiece.Length == 3)
+
+            //NO OBVIOUS MATCHES
+            if(input.Count == 0)
             {
-                //style = stylePiece[0] + stylePiece[1] + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                int Year = -1;
+                int Month = -1;
+                int Day = -1;
 
-                style = stylePiece[0] + " " + stylePiece[1] + " " + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                Year = int.Parse(input[0]);
+                Month = int.Parse(input[1]);
+                Day = int.Parse(input[2]);
 
-                style = stylePiece[0] + "-" + stylePiece[1] + "-" + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                if (Month > 12 | Day > 31)
+                {
+                    Year = int.Parse(input[2]);
+                    Month = int.Parse(input[1]);
+                    Day = int.Parse(input[0]);
+                }
 
-                style = stylePiece[0] + "." + stylePiece[1] + "." + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-
-                //style = stylePiece[1] + stylePiece[0] + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-                style = stylePiece[1] + " " + stylePiece[0] + " " + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-                style = stylePiece[1] + "-" + stylePiece[0] + "-" + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-                style = stylePiece[1] + "." + stylePiece[0] + "." + stylePiece[2];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-
-                //style = stylePiece[2] + stylePiece[1] + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-                style = stylePiece[2] + " " + stylePiece[1] + " " + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-                style = stylePiece[2] + "-" + stylePiece[1] + "-" + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-
-                style = stylePiece[2] + "." + stylePiece[1] + "." + stylePiece[0];
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
-            }
-            else
-            {
-                isDate = DateTime.TryParseExact(datestring, style, CultureInfo.InvariantCulture, DateTimeStyles.None, out fileDate); if (isDate) { return true; }
+                if (Month > 12 | Day > 31)
+                {
+                    Year = int.Parse(input[2]);
+                    Month = int.Parse(input[0]);
+                    Day = int.Parse(input[1]);
+                }
             }
 
 
-            return false;
+
+
+            return finalDate;
         }
-        
+
         private void GateFolder_Click(object sender, RoutedEventArgs e)
         {
             using (var fbd = new FolderBrowserDialog())
