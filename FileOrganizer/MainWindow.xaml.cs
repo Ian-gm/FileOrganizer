@@ -28,6 +28,7 @@ using System.Xml.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using System.Diagnostics.Tracing;
+using Microsoft.VisualBasic.Devices;
 
 namespace FileOrganizer
 {
@@ -63,10 +64,14 @@ namespace FileOrganizer
             this.DataContext = this;
 
             //TASKBAR ICON
+
+            /*
             string fileExe = System.Reflection.Assembly.GetEntryAssembly().Location;
             tbi = new TaskbarIcon();
             //tbi.Icon = System.Drawing.Icon.ExtractAssociatedIcon(fileExe);
             tbi.ToolTipText = "FileAway";
+            */
+
             
 
             //READ ALL .TXT FILES
@@ -86,7 +91,7 @@ namespace FileOrganizer
                 if (gateDirectory != null && Path.Exists(gateDirectory))
                 {
                     ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(gateDirectory);
-                    StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory;
+                    this.Dispatcher.Invoke(() => { StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory; });
                 }
 
                 /*
@@ -102,7 +107,8 @@ namespace FileOrganizer
 
         private void MainWindow_Closing(object? sender, CancelEventArgs e)
         {
-            tbi.Dispose();
+            //tbi.Dispose();
+            
         }
 
         private static void OnChanged(object sender, FileSystemEventArgs e)
@@ -298,15 +304,17 @@ namespace FileOrganizer
             {
                  FileList.Add(s);
             }
-            OrganizeFiles();
 
+            OrganizeFiles();
+            
             Running = false;
         }
         
         private void OrganizeFiles()
         {
-            foreach(string file in FileList)
+            foreach (string file in FileList)
             {
+                bool failedDirectory = false;
                 string newfile = "";
                 int rowIndex = 0;
                 string fileName = Path.GetFileNameWithoutExtension(file);
@@ -327,7 +335,7 @@ namespace FileOrganizer
                     int dateIndex = 0;
 
                     stringDate = fileNamePieces[0];
-                    keywordPiece = fileNamePieces[1].Trim();               
+                    keywordPiece = fileNamePieces[1].Trim();
                 }
                 else
                 {
@@ -338,29 +346,35 @@ namespace FileOrganizer
 
                 string finalDate = "";
 
+                //stringDate = stringDate.Replace(" ", string.Empty);
                 bool dateFound = ComplexParseDate(stringDate, out finalDate);
 
                 keywordPiece = keywordPiece.ToLower();
 
+                string Keyword = "";
+
                 foreach (DataRow row in excelData.Rows)
                 {
 
-                    string Keyword = "";
-
                     try
                     {
-                        Keyword = row["Keyword"].ToString().ToLower().Trim();
+                        Keyword = row["Keyword"].ToString();
                     }
                     catch
                     {
-                        StatusMessage.Text = "Missing Keyword column"; 
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            StatusMessage.Text = "Missing Keyword column";
+                        });
                     }
 
-                    if (keywordPiece.Contains(Keyword))
+                    if (keywordPiece.Contains(Keyword.ToLower().Trim()))
                     {
                         try
                         {
                             filePath = row["Directory"].ToString();
+                            string quote = '"'.ToString();
+                            filePath = filePath.Replace(quote, string.Empty);
                         }
                         catch
                         {
@@ -373,7 +387,7 @@ namespace FileOrganizer
                         }
                         catch
                         {
-                        
+                            
                         }
 
                         break;
@@ -384,13 +398,32 @@ namespace FileOrganizer
                 string ext = Path.GetExtension(file);
                 if (filePath != null && rename != null)
                 {
-                    if(!Path.Exists(filePath))
+                    if (!Path.Exists(filePath))
                     {
-                        Directory.CreateDirectory(filePath);
+                        try
+                        {
+                            Directory.CreateDirectory(filePath);
+                        }
+                        catch (Exception e)
+                        {
+                            failedDirectory = true;
+                            /*
+                            this.Dispatcher.Invoke(() =>
+                            {
+                                StatusMessage.Text = "The directory on keyword: '" + Keyword.Trim() + "' is not valid";
+                            });
+                            */
+                        }
 
-                        StatusMessage.Text = "Created folder: " + filePath;
+                        if (Path.Exists(filePath))
+                        {
+                            this.Dispatcher.Invoke(() =>
+                            {
+                                StatusMessage.Text = "Created folder: " + filePath;
+                            });
+                        }
                     }
-                    
+
                     newfile = Path.Combine(filePath, finalDate + "_" + rename + ext);
                     newfile = addPrefix(newfile);
                     string originalDirectory = Directory.GetParent(file).ToString();
@@ -401,10 +434,13 @@ namespace FileOrganizer
                     }
                     catch (Exception e)
                     {
-                        StatusMessage.Text = "Couldn't send file to indicated folder. " + e.Message;
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            StatusMessage.Text = "Couldn't send file to indicated folder. " + e.Message;
+                        });
                     }
 
-                    if(originalDirectory == FileAway.Properties.Settings.Default.GateFolderPath && Path.Exists(newfile))
+                    if (originalDirectory == FileAway.Properties.Settings.Default.GateFolderPath && Path.Exists(newfile))
                     {
                         File.Delete(file);
                     }
@@ -412,9 +448,13 @@ namespace FileOrganizer
 
 
                 string name = Path.GetFileNameWithoutExtension(file);
-                if(newfile.Length == 0)
+                if (newfile.Length == 0)
                 {
-                    newfile = "NO MATCH";
+                    newfile = "COULDN'T FIND KEYWORD";
+                }
+                else if (failedDirectory)
+                {
+                    newfile = "COULDN'T CREATE DIRECTORY";
                 }
                 string newname = Path.GetFileNameWithoutExtension(newfile);
                 Processed mewItem = new Processed(name, newname, filePath);
@@ -436,7 +476,7 @@ namespace FileOrganizer
                     }
                     catch (System.Exception e)
                     {
-                        StatusMessage.Text = e.ToString();
+                        this.Dispatcher.Invoke(() => { StatusMessage.Text = e.ToString(); });
                     }
                 }
             }
@@ -541,8 +581,16 @@ namespace FileOrganizer
                     //CHECKEAR SI ESTE CHAR Y EL SIGUIENTE SON DE DISTINTO TIPO
                     if (char.IsLetter(newChar))
                     {
-                        newCharbool = true;
-                        nextCharbool = char.IsLetter(nextChar);
+                        if (char.IsUpper(newChar))
+                        {
+                            newCharbool = true;
+                            nextCharbool = true;
+                        }
+                        else if (char.IsLower(newChar))
+                        {
+                            newCharbool = true;
+                            nextCharbool = char.IsLower(nextChar);
+                        }
                     }
                     else if (char.IsDigit(newChar))
                     {
@@ -565,9 +613,11 @@ namespace FileOrganizer
                     if (i - 1 >= 0)
                     {
                         char prevChar = input[i - 1];
-                        prevCharbool = char.IsLetter(prevChar) | char.IsDigit(prevChar);
+                        prevCharbool = !(char.IsLetter(prevChar) | char.IsDigit(prevChar) | char.IsWhiteSpace(prevChar));
+                        newCharbool = !(char.IsLetter(newChar) | char.IsDigit(newChar) | char.IsWhiteSpace(newChar));
+                        nextCharbool = !(char.IsLetter(nextChar) | char.IsDigit(nextChar) | char.IsWhiteSpace(nextChar));
 
-                        if (prevCharbool && (!newCharbool && !nextCharbool))
+                        if (prevCharbool & newCharbool & nextCharbool)
                         {
                             words[words.Count - 1] += "x";
                         }
@@ -1078,7 +1128,7 @@ namespace FileOrganizer
                 gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
 
                 ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(chosenFolder);
-                StatusMessage.Text = "Chosen Gate Folder: " + chosenFolder;
+                this.Dispatcher.Invoke(() => { StatusMessage.Text = "Chosen Gate Folder: " + chosenFolder; });
             }
         }
 
@@ -1099,7 +1149,7 @@ namespace FileOrganizer
             if (Directory.Exists(folderPath))
             {
                 Process.Start("explorer.exe", string.Format("/select, \"{0}\"", folderPath));
-                StatusMessage.Text = "Opened: " + folderPath;
+                this.Dispatcher.Invoke(() => { StatusMessage.Text = "Opened: " + folderPath; });
             }
             else
             {
