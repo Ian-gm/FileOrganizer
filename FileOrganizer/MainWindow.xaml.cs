@@ -29,6 +29,7 @@ using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using System.Diagnostics.Tracing;
 using Microsoft.VisualBasic.Devices;
+using System.Diagnostics.Eventing.Reader;
 
 namespace FileOrganizer
 {
@@ -72,7 +73,6 @@ namespace FileOrganizer
             tbi.ToolTipText = "FileAway";
             */
 
-            
 
             //READ ALL .TXT FILES
             string appPath = AppContext.BaseDirectory;
@@ -352,6 +352,8 @@ namespace FileOrganizer
                 keywordPiece = keywordPiece.ToLower();
 
                 string Keyword = "";
+                string Directorystring = "";
+                string Preset = "";
 
                 foreach (DataRow row in excelData.Rows)
                 {
@@ -368,6 +370,11 @@ namespace FileOrganizer
                         });
                     }
 
+                    if(Keyword == string.Empty)
+                    {
+                        continue;
+                    }
+
                     if (keywordPiece.Contains(Keyword.ToLower().Trim()))
                     {
                         try
@@ -375,6 +382,8 @@ namespace FileOrganizer
                             filePath = row["Directory"].ToString();
                             string quote = '"'.ToString();
                             filePath = filePath.Replace(quote, string.Empty);
+
+                            Directorystring = filePath;
                         }
                         catch
                         {
@@ -384,6 +393,8 @@ namespace FileOrganizer
                         try
                         {
                             rename = row["Preset"].ToString();
+
+                            Preset = rename;
                         }
                         catch
                         {
@@ -479,6 +490,9 @@ namespace FileOrganizer
                         this.Dispatcher.Invoke(() => { StatusMessage.Text = e.ToString(); });
                     }
                 }
+
+
+                //StatusMessage.Text = Keyword + "\n" + Preset + "\n" + Directorystring; 
             }
 
             FileList.Clear();
@@ -769,6 +783,7 @@ namespace FileOrganizer
             DateTime getMonth = DateTime.Now;
 
             List<string> firstParse = new List<string>();
+            List<string> secondParse = new List<string>();
 
             for (int i = 0; i < input.Count; i++)
             {
@@ -887,6 +902,13 @@ namespace FileOrganizer
                 }
             }
 
+            if(firstParse.Count == 0)
+            {
+                return finalDate;
+            }
+
+            int countFinalDate = finalDate.Count;
+
             for (int i = 0; i < firstParse.Count; i++)
             {
                 string word = firstParse[i];
@@ -921,8 +943,11 @@ namespace FileOrganizer
                             finalDate[1] = value;
                         }
                     }
+                    else
+                    {
+                        secondParse.Add(word);
+                    }
                 }
-                
             }
 
             if (finalDate[0] != -1 && finalDate[1] != -1 && finalDate[2] != -1)
@@ -930,6 +955,11 @@ namespace FileOrganizer
                 return finalDate;
             }
             
+            if(secondParse.Count == 0)
+            {
+                return finalDate;
+            }
+
             for (int i = 0; i < input.Count; i++)
             {
                 string word = input[i];
@@ -947,32 +977,31 @@ namespace FileOrganizer
                         }
                         if (!isMonth && i == 1)
                         {
-                            if (finalDate[1] == -1) { finalDate[1] = value; }
+                            if (finalDate[1] == -1 && word.Length < 3) { finalDate[1] = value; }
                         }
                         if (i == 2)
                         {
-                            if (finalDate[2] == -1) { finalDate[2] = value; }
+                            if (finalDate[2] == -1 && word.Length < 3) { finalDate[2] = value; }
                         }
                     }
                     else if (input.Count == 2)
                     {
                         if (!isMonth && i == 0)
                         {
-                            if (finalDate[1] == -1) { finalDate[1] = value; }
+                            if (finalDate[1] == -1 && word.Length < 3) { finalDate[1] = value; }
                         }
                         else if (isMonth && i == 0)
                         {
-                            if (finalDate[2] == -1) { finalDate[2] = value; }
+                            if (finalDate[2] == -1 && word.Length < 3) { finalDate[2] = value; }
                         }
                         else if (i == 1)
                         {
-                            if (finalDate[2] == -1) { finalDate[2] = value; }
+                            if (finalDate[2] == -1 && word.Length < 3) { finalDate[2] = value; }
                         }
                     }
                 }
             }
             
-
             return finalDate;
         }
 
@@ -1107,9 +1136,6 @@ namespace FileOrganizer
                     Day = int.Parse(input[1]);
                 }
             }
-
-
-
 
             return finalDate;
         }
