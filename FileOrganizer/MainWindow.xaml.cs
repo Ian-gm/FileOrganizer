@@ -321,13 +321,14 @@ namespace FileOrganizer
                 string fullName = Path.GetFileName(file);
                 string[] fileNamePieces;
                 DateTime fileDate = DateTime.Today;
-                string? rename = null;
                 bool isDate = false;
+
+                int keyLength = 0;
 
                 string keywordPiece = "";
                 string stringDate = "";
 
-                string? filePath = null;
+                string filePath = string.Empty;
 
                 if (fileName.Contains("$"))
                 {
@@ -343,7 +344,6 @@ namespace FileOrganizer
                     keywordPiece = fileName;
                 }
 
-
                 string finalDate = "";
 
                 //stringDate = stringDate.Replace(" ", string.Empty);
@@ -351,9 +351,9 @@ namespace FileOrganizer
 
                 keywordPiece = keywordPiece.ToLower();
 
-                string Keyword = "";
-                string Directorystring = "";
-                string Preset = "";
+                string Keyword = string.Empty;
+                string Directorystring = string.Empty;
+                string Preset = string.Empty;
 
                 foreach (DataRow row in excelData.Rows)
                 {
@@ -364,10 +364,12 @@ namespace FileOrganizer
                     }
                     catch
                     {
+                        /*
                         this.Dispatcher.Invoke(() =>
                         {
                             StatusMessage.Text = "Missing Keyword column";
                         });
+                        */
                     }
 
                     if(Keyword == string.Empty)
@@ -377,37 +379,44 @@ namespace FileOrganizer
 
                     if (keywordPiece.Contains(Keyword.ToLower().Trim()))
                     {
-                        try
+                        if(keyLength < Keyword.Length)
                         {
-                            filePath = row["Directory"].ToString();
-                            string quote = '"'.ToString();
-                            filePath = filePath.Replace(quote, string.Empty);
+                            keyLength = Keyword.Length;
 
-                            Directorystring = filePath;
+                            try
+                            {
+                                filePath = row["Directory"].ToString();
+                                string quote = '"'.ToString();
+                                filePath = filePath.Replace(quote, string.Empty);
+
+                                Directorystring = filePath;
+                            }
+                            catch
+                            {
+
+                            }
+
+                            try
+                            {
+                                Preset = row["Preset"].ToString();
+                            }
+                            catch
+                            {
+
+                            }
                         }
-                        catch
-                        {
-
-                        }
-
-                        try
-                        {
-                            rename = row["Preset"].ToString();
-
-                            Preset = rename;
-                        }
-                        catch
-                        {
-                            
-                        }
-
-                        break;
                     }
                     rowIndex++;
                 }
 
                 string ext = Path.GetExtension(file);
-                if (filePath != null && rename != null)
+                string name = Path.GetFileNameWithoutExtension(file);
+
+                if (keyLength == 0)
+                {
+                    newfile = "COULDN'T FIND KEYWORD";
+                }
+                else
                 {
                     if (!Path.Exists(filePath))
                     {
@@ -435,7 +444,7 @@ namespace FileOrganizer
                         }
                     }
 
-                    newfile = Path.Combine(filePath, finalDate + "_" + rename + ext);
+                    newfile = Path.Combine(filePath, finalDate + "_" + Preset + ext);
                     newfile = addPrefix(newfile);
                     string originalDirectory = Directory.GetParent(file).ToString();
 
@@ -457,13 +466,7 @@ namespace FileOrganizer
                     }
                 }
 
-
-                string name = Path.GetFileNameWithoutExtension(file);
-                if (newfile.Length == 0)
-                {
-                    newfile = "COULDN'T FIND KEYWORD";
-                }
-                else if (failedDirectory)
+                if (failedDirectory)
                 {
                     newfile = "COULDN'T CREATE DIRECTORY";
                 }
