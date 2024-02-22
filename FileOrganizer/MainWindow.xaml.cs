@@ -912,43 +912,53 @@ namespace FileOrganizer
 
             int countFinalDate = finalDate.Count;
 
-            for (int i = 0; i < firstParse.Count; i++)
+            if (firstParse.Count == 3 && input.Count == 3) //ASSUME MMDDYY
             {
-                string word = firstParse[i];
-                int value = int.Parse(word);
+                finalDate[1] = int.Parse(firstParse[0]);
+                finalDate[0] = int.Parse(firstParse[1]);
+                finalDate[2] = int.Parse(firstParse[2]);
+            }
+            else
+            {
+                for (int i = 0; i < firstParse.Count; i++)
+                {
 
-                if (value > 31)
-                {
-                    if (!isYear)
+                    string word = firstParse[i];
+                    int value = int.Parse(word);
+
+                    if (value > 31)
                     {
-                        isYear = true;
-                        finalDate[0] = value;
+                        if (!isYear)
+                        {
+                            isYear = true;
+                            finalDate[0] = value;
+                        }
                     }
-                }
-                else if (value > 12)
-                {
-                    if (isYear)
+                    else if (value > 12)
                     {
-                        if (finalDate[2] == -1) { finalDate[2] = value; }
-                    }
-                }
-                else
-                {
-                    if (isYear && isMonth)
-                    {
-                        if (finalDate[2] == -1) { finalDate[2] = value; }
-                    }
-                    else if (isYear)
-                    {
-                        if (finalDate[1] == -1)
-                        { 
-                            isMonth = true;
-                            finalDate[1] = value;
+                        if (isYear)
+                        {
+                            if (finalDate[2] == -1) { finalDate[2] = value; }
                         }
                     }
                     else
                     {
-                        secondParse.Add(word);
+                        if (isYear && isMonth)
+                        {
+                            if (finalDate[2] == -1) { finalDate[2] = value; }
+                        }
+                        else if (isYear)
+                        {
+                            if (finalDate[1] == -1)
+                            {
+                                isMonth = true;
+                                finalDate[1] = value;
+                            }
+                        }
+                        else
+                        {
+                            secondParse.Add(word);
+                        }
                     }
                 }
             }
