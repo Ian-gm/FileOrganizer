@@ -30,6 +30,7 @@ using System.Text.RegularExpressions;
 using System.Diagnostics.Tracing;
 using Microsoft.VisualBasic.Devices;
 using System.Diagnostics.Eventing.Reader;
+using Microsoft.VisualBasic.FileIO;
 
 namespace FileOrganizer
 {
@@ -54,6 +55,8 @@ namespace FileOrganizer
 
         private bool Running = false;
 
+        private bool DataRead = false;
+
         public MainWindow()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -75,32 +78,26 @@ namespace FileOrganizer
 
 
             //READ ALL .TXT FILES
-            string appPath = AppContext.BaseDirectory;
-            string appPathPrevious = Directory.GetParent(appPath).Parent.FullName;
-            string excelPath = Path.Combine(appPathPrevious, @"data.xlsx");
-            
-            bool excelRead = ReadDataExcel(excelPath);
-
-            if(excelRead)
+            string excelPath = FileAway.Properties.Settings.Default.DataExcelPath;
+            if(excelPath == null)
             {
-                timer1 = new System.Threading.Timer(Callback, null, 0, 2000);
-                //var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-
-                gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
-
-                if (gateDirectory != null && Path.Exists(gateDirectory))
-                {
-                    ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(gateDirectory);
-                    this.Dispatcher.Invoke(() => { StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory; });
-                }
-
-                /*
-                string[] args = Environment.GetCommandLineArgs();
-                AddItemstoFileList(args);
-                */
-
-                //checkGateDirectory();
+                string appPath = AppContext.BaseDirectory;
+                string appPathPrevious = Directory.GetParent(appPath).Parent.FullName;
+                excelPath = Path.Combine(appPathPrevious, @"data.xlsx");
             }
+
+            gateDirectory = FileAway.Properties.Settings.Default.GateFolderPath;
+
+            if (gateDirectory != null && Path.Exists(gateDirectory))
+            {
+                ChosenFolder.Text = "Gate Folder: " + Path.GetFileName(gateDirectory);
+                this.Dispatcher.Invoke(() => { StatusMessage.Text = "Chosen Gate Folder: " + gateDirectory; });
+            }
+
+            this.Dispatcher.Invoke(() => { ChosenData.Text = "Data File: " + Path.GetFileNameWithoutExtension(excelPath); });
+            DataRead = ReadDataExcel(excelPath);
+
+            timer1 = new System.Threading.Timer(Callback, null, 0, 2000);
 
             this.Closing += MainWindow_Closing;
         }
@@ -215,7 +212,7 @@ namespace FileOrganizer
         {
             if (!Path.Exists(filePath))
             {
-                StatusMessage.Text = "data.xls file doesn't exist. Please add it";
+                StatusMessage.Text = "Data file doesn't exist. Please load it.";
                 return false;
             }
 
@@ -230,9 +227,18 @@ namespace FileOrganizer
                 StatusMessage.Text = ex.Message;
                 return false;
             }
+
             IExcelDataReader excelReader;
 
-            excelReader = ExcelDataReader.ExcelReaderFactory.CreateReader(stream);
+            try
+            {
+                excelReader = ExcelDataReader.ExcelReaderFactory.CreateReader(stream);
+            }
+            catch
+            {
+                this.Dispatcher.Invoke(() => { StatusMessage.Text = "Chosen Data file isn't an .xlxs file"; });
+                return false;
+            }
 
             var conf = new ExcelDataSetConfiguration
             {
@@ -242,26 +248,80 @@ namespace FileOrganizer
                 }
             };
 
+            excelReader = ExcelDataReader.ExcelReaderFactory.CreateReader(stream);
+
             var dataSet = excelReader.AsDataSet(conf);
 
             excelData = dataSet.Tables[0];
 
-            stream.Dispose();
-
-
-            if (excelData != null)
-            {
-                return true;
-            }
-            else
+            if (excelData == null)
             {
                 return false;
             }
+
+
+            DataColumnCollection dataColumns = excelData.Columns;
+
+            this.Dispatcher.Invoke(() =>
+            {
+                StatusMessage.Text += "\n";
+            });
+
+            bool K = false;
+            K = dataColumns.Contains("Keyword");
+
+            if (!K)
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    StatusMessage.Text += "\nMissing Keyword column on Data file. ";
+                });
+            }
+
+            bool P = false;
+            P = dataColumns.Contains("Preset");
+
+            if (!P)
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    StatusMessage.Text += "\nMissing Preset column on Data file. ";
+                });
+            }
+
+            bool D = false;
+            D = dataColumns.Contains("Directory");
+
+            if (!D)
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    StatusMessage.Text += "\nMissing Directory column on Data file. ";
+                });
+            }
+
+            if(!(K & P & D))
+            {
+                this.Dispatcher.Invoke(() =>
+                {
+                    StatusMessage.Text += "\nPlease add missing column and reload Data file. ";
+                });
+
+                return false;
+            }
+            else
+            {
+                StatusMessage.Text += "\nData file succesfully read. ";
+            }
+
+            stream.Dispose();
+
+            return true;
         }
 
         private void Callback(object? state)
         {
-            if (!Running)
+            if (!Running && DataRead)
             {
                 Running = true;
                 checkGateDirectory();
@@ -279,9 +339,11 @@ namespace FileOrganizer
 
             if ((null == droppedFiles) || (!droppedFiles.Any())) { return; }
 
-            Running = true;
-
-            AddItemstoFileList(droppedFiles);
+            if (DataRead)
+            {
+                Running = true;
+                AddItemstoFileList(droppedFiles);
+            }
         }
 
         private void checkGateDirectory()
@@ -462,7 +524,8 @@ namespace FileOrganizer
 
                     if (originalDirectory == FileAway.Properties.Settings.Default.GateFolderPath && Path.Exists(newfile))
                     {
-                        File.Delete(file);
+                        //File.Delete(file);
+                        FileSystem.DeleteFile(file, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
                     }
                 }
 
@@ -1194,6 +1257,31 @@ namespace FileOrganizer
             {
                 StatusMessage.Text = "That folder doesn't exist";
             }
+        }
+
+        private void ReloadData_Click(object sender, RoutedEventArgs e)
+        {
+            string excelPath;
+
+            using (var fbd = new OpenFileDialog())
+            {
+                fbd.Title = "Choose an excel file";
+                
+                DialogResult result = fbd.ShowDialog();
+
+                string chosenPath = fbd.FileName;
+
+                FileAway.Properties.Settings.Default.DataExcelPath = chosenPath;
+                FileAway.Properties.Settings.Default.Save();
+
+                excelPath = FileAway.Properties.Settings.Default.DataExcelPath;
+
+                this.Dispatcher.Invoke(() => { StatusMessage.Text = "Data File path: " + chosenPath; });
+                this.Dispatcher.Invoke(() => { ChosenData.Text = "Data File: " + Path.GetFileNameWithoutExtension(excelPath); });
+
+            }
+
+            DataRead = ReadDataExcel(excelPath);
         }
     }
 }

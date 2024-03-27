@@ -53,6 +53,10 @@
             <TextBlock Text="No folder chosen" HorizontalAlignment="Center" VerticalAlignment="Top"
                      TextAlignment="Center" Margin="0, 5"  Height="15" TextWrapping="Wrap" x:Name="ChosenFolder"></TextBlock>
 
+            <Button x:Name="ReloadData" Click="ReloadData_Click" Margin="0, 15,0,0">Choose Data File</Button>
+            <TextBlock Text="No data file added" HorizontalAlignment="Center" VerticalAlignment="Top"
+                     TextAlignment="Center" Margin="0, 5"  Height="15" TextWrapping="Wrap" x:Name="ChosenData"></TextBlock>
+            
             <Button x:Name="ClearProcessedList" Click="ClearProcessedList_Click" Margin="0, 15,0,0"> Clear List</Button> 
         </StackPanel>
         
